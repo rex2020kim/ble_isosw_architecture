@@ -57,10 +57,10 @@ typedef struct CisObj_T {
     uint8_t     maxPdu[2];
     uint8_t     phy[2];
     uint8_t     rtn[2];
-    uint8_t     bn[2];
     //by controller
     AclObj_T    *parent;
     uint16_t    cisHandle;
+    uint8_t     bn[2];
     uint8_t     nse;
     uint32_t    sub_interval;
     uint8_t     state; //STBY -> ALLOCED -> CONNECTED

@@ -207,24 +207,22 @@ VOS_PROCESS(ll_iso_admin) {
         case LL_CREATE_CIS:
             LL_CMD_CREATE_CIS_T *ptCmd = (LL_CMD_CREATE_CIS_T *)ptMsg;
             LL_Iso_CreateCis_checkParams(ptCmd); //check if all CIS and ACL handles are valid or not already connected.
-            //for (int i=0; i<ptCmd->cisCount; i++)
-            {
-                CisObj_T *ptCis = getIsoCisObject(ptCis->cisHandle);
-                if (ptCis) {
-                    CigObj_T *ptCig = getIsoCigObject(ptCis->cigId);
-                    if (ptCig) {
-                        if (ptCig->state == STBY) {
-                            IsoCigCalculateCisParams(ptCig, ptCis);
-                            VOS_Send(LL_CREATE_CIS, TO(ll_iso_control));
-                        }
-                    }
-                    else {
-                        VOS_Send(LL_CREATE_CIS_NEG, Error, TO(ll_admision));
+
+            CisObj_T *ptCis = getIsoCisObject(ptCis->cisHandle);
+            if (ptCis) {
+                CigObj_T *ptCig = getIsoCigObject(ptCis->cigId);
+                if (ptCig) {
+                    if (ptCig->state == STBY) {
+                        IsoCigCalculateCisParams(ptCig, ptCis);
+                        VOS_Send(LL_CREATE_CIS, TO(ll_iso_control));
                     }
                 }
                 else {
-                  VOS_Send(LL_CREATE_CIS_NEG, Error, TO(ll_admision));
+                    VOS_Send(LL_CREATE_CIS_NEG, Error, TO(ll_admision));
                 }
+            }
+            else {
+              VOS_Send(LL_CREATE_CIS_NEG, Error, TO(ll_admision));
             }
             break;
 
@@ -336,19 +334,22 @@ void IsoCisCalculateCisParams(ptCig, ptCis)
     //If this is a first CIS connection, 
     1. check bandwidth
     2. determine:
-     1) max_pdu = (MAX_SDU <= MAX_PDU(251)) ? MAX_SDU : MAX_SDU / ((MAX_SDU + (MAX_PDU-1))/MAX_PDU);
-     2) MPT = (max_pdu + overhead)*8*us/symbol.
-     3) min_se_interal = MPT*max_pdu_m2s + MPT*max_pdu_s2m+T_IFS+T_MSS
-     4) nse = BN*RTN
-     5) min_cis_event_len = se_interval * nse
-     6) min_cig_sync_delay = sum(min_cis_event_len of all CISes)
-     7) find best iso interval: iso interval should be > min_cig_sync_delay + margin for scheduling other ll
+     1) find default iso interval: iso interval should be > min_cig_sync_delay + margin for scheduling other ll
         . if LE has another CIG, same or integer multiple sdu interval may be the best to minimize collision
         . choose integer multiple of sdu interval temporarily
         . best candidate may be closest value to SDU interval which is equal to or greater than (min_cig_sync_delay*2)
+     2) max_pdu = (MAX_SDU <= MAX_PDU(251)) ? MAX_SDU : MAX_SDU / ((MAX_SDU + (MAX_PDU-1))/MAX_PDU);
+     3) MPT = (max_pdu + overhead)*8*us/symbol.
+     4) min_se_interal = MPT*max_pdu_m2s + MPT*max_pdu_s2m+T_IFS+T_MSS
+     5) choose minBN = CEIL(SDU interval / iso interval)
+     4) nse = minBN*RTN
+     5) min_cis_event_len = se_interval * nse
+     6) min_cig_sync_delay = sum(min_cis_event_len of all CISes)
      7) max_ft = (maxTransportLatency - min_cis_sync_delay - sdu_interval) / iso interval candidate;
-     8) if max_ft >= 1, use the iso interval candidate
-        else if max_ft < 1, reduce iso_interval and repeat 7) ~ 8) to find optimum value.
+     8) if max_ft >= 1, use chosen value.
+        else if max_ft < 1, next
+     9) change params and recalculate:
+        increase BN >> increase MAX_PDU >> decrease Iso interval
 
     3. choose best iso interval:
      - get information from ll_scheduler to check which one is best regular interval minimizing collision
