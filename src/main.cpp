@@ -3,8 +3,6 @@
 
 using namespace std;
 
-/* Design Interview: Design architecture for LE ISO architecture */
-
 /* Pre-questions
  * 1. If an earlier packet has an earlier time stamp value?
  * 2. If 1 is not guarantted, the packet sequence number represents the order of PDU?
@@ -209,7 +207,7 @@ VOS_PROCESS(ll_iso_admin) {
         case LL_CREATE_CIS:
             LL_CMD_CREATE_CIS_T *ptCmd = (LL_CMD_CREATE_CIS_T *)ptMsg;
             LL_Iso_CreateCis_checkParams(ptCmd); //check if all CIS and ACL handles are valid or not already connected.
-            for (int i=0; i<ptCmd->cisCount; i++)
+            //for (int i=0; i<ptCmd->cisCount; i++)
             {
                 CisObj_T *ptCis = getIsoCisObject(ptCis->cisHandle);
                 if (ptCis) {
